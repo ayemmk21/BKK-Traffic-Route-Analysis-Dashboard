@@ -1,10 +1,12 @@
+import streamlit as st
+st.set_page_config(page_title="Bangkok Bus Insights", layout="wide")
+
 import os, ast, pickle, colorsys, hashlib
 from pathlib import Path
 from datetime import datetime
 from huggingface_hub import hf_hub_download
 import numpy as np
 import pandas as pd
-import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import folium
@@ -12,7 +14,6 @@ from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 import requests
 
-st.set_page_config(page_title="Bangkok Bus Insights", layout="wide")
 
 # Hugging Face dataset URLs
 DATA_REPO = "Ayemm/BKK_Bus_Data"
