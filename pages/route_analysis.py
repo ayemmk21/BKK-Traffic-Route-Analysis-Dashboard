@@ -239,55 +239,9 @@ def estimate_time_between_indices(ref, oi, di, routes_df, route_models, feature_
         return None
     return float(part["segment_travel_time_min"].sum())
 
-
-# load models from Hugging Face with error handling
-@st.cache_resource(show_spinner=False)
-def load_models_from_hf():
-    """Load models with robust error handling - returns empty dicts on failure"""
-    try:
-        st.info("⏳ Loading prediction models (this may take 30-60 seconds)...")
-        
-        route_models_path = hf_hub_download(
-            "Ayemm/BKK_Bus_Data",
-            "route_models.pkl",
-            repo_type="dataset"
-        )
-        feature_columns_path = hf_hub_download(
-            "Ayemm/BKK_Bus_Data",
-            "feature_columns.pkl",
-            repo_type="dataset"
-        )
-
-        with open(route_models_path, "rb") as f:
-            route_models = pickle.load(f)
-
-        with open(feature_columns_path, "rb") as f:
-            feature_columns = pickle.load(f)
-
-        st.success(f"Loaded {len(route_models)} route prediction models")
-        return route_models, feature_columns
-
-    except Exception as e:
-        st.warning(f"Prediction models unavailable: {str(e)[:100]}")
-        st.info("App will continue without time predictions - showing route analysis only")
-        return {}, {}
-
-# Load models (won't crash if they fail)
-try:
-    route_models, feature_columns = load_models_from_hf()
-except Exception as e:
-    st.error(f"Model loading error: {e}")
-    route_models, feature_columns = {}, {}
-
-# Flag to check if models are available
-MODELS_AVAILABLE = bool(route_models)
-
-
 # ==============================
 # LOAD DATA
 # ==============================
-st.info("Loading data from Hugging Face...")
-
 DATA_REPO = "Ayemm/BKK_Bus_Data"
 
 @st.cache_data(show_spinner=False)
@@ -299,13 +253,57 @@ def load_csv_hf(repo_id: str, filename: str):
     )
     return pd.read_csv(path)
 
-routes = load_csv_hf(DATA_REPO, "cleaned_bus_routes_file.csv")
-traffic = load_csv_hf(DATA_REPO, "traffic.csv")
-zones = load_csv_hf(DATA_REPO, "congestion_zones.csv")
-stops = load_csv_hf(DATA_REPO, "cleaned_bus_stops_file.csv")
+with st.spinner("Loading data from Hugging Face..."):
+    routes = load_csv_hf(DATA_REPO, "cleaned_bus_routes_file.csv")
+    traffic = load_csv_hf(DATA_REPO, "traffic.csv")
+    zones = load_csv_hf(DATA_REPO, "congestion_zones.csv")
+    stops = load_csv_hf(DATA_REPO, "cleaned_bus_stops_file.csv")
 
 st.success("Data loaded successfully")
 
+# -------------------- LOAD MODELS --------------------
+@st.cache_resource(show_spinner=False)
+def load_models_from_hf():
+    """Load models - can fail gracefully"""
+    try:
+        route_models_path = hf_hub_download(
+            "Ayemm/BKK_Bus_Data",
+            "route_models.pkl",
+            repo_type="dataset",
+            # Add timeout
+            local_files_only=False
+        )
+        feature_columns_path = hf_hub_download(
+            "Ayemm/BKK_Bus_Data",
+            "feature_columns.pkl",
+            repo_type="dataset",
+            local_files_only=False
+        )
+
+        with open(route_models_path, "rb") as f:
+            route_models = pickle.load(f)
+
+        with open(feature_columns_path, "rb") as f:
+            feature_columns = pickle.load(f)
+
+        return route_models, feature_columns
+
+    except Exception as e:
+        return {}, {}
+
+try:
+    model_status = st.status("Loading prediction models...")  
+    route_models, feature_columns = load_models_from_hf()
+    
+    if route_models:
+        model_status.success(f"Loaded {len(route_models)} prediction models")
+    else:
+        model_status.warning("Prediction models unavailable - continuing without them")
+except Exception as e:
+    st.warning(f"Could not load prediction models: {str(e)[:100]}")
+    route_models, feature_columns = {}, {}
+
+MODELS_AVAILABLE = bool(route_models)
 
 # normalize route geometry
 if routes is not None:
