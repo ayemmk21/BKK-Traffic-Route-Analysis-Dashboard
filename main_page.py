@@ -6,6 +6,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import folium
 from streamlit_folium import folium_static
+from streamlit_folium import st_folium
 import os
 
 # Page configuration
@@ -284,8 +285,9 @@ with tab1:
                 fillOpacity=0.6,
                 popup=f"Speed: {speed:.1f} km/h"
             ).add_to(m)
-        
-        folium_static(m, width=800, height=600)
+
+        st_folium(m, width=800, height=600)
+        #folium_static(m, width=800, height=600)
     
     with col2:
         st.subheader("Congestion Zones")
@@ -305,7 +307,7 @@ with tab1:
                 labels={'distance_from_center': 'Distance from Center', 'speed': 'Speed (km/h)'},
                 color_continuous_scale='RdYlGn'
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
 
 # ============================================================================
 # TAB 2: TEMPORAL PATTERNS
@@ -337,7 +339,7 @@ with tab2:
             fig.update_yaxes(title_text="Traffic Volume", secondary_y=False)
             fig.update_yaxes(title_text="Average Speed (km/h)", secondary_y=True)
             fig.update_layout(title="Traffic Volume and Speed by Hour")
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
     
     with col2:
         st.subheader("Traffic by Day of Week")
@@ -355,38 +357,8 @@ with tab2:
                 color='speed',
                 color_continuous_scale='RdYlGn'
             )
-            st.plotly_chart(fig, use_container_width=True)
-    
-    st.markdown("---")
-    
-    # Rush hour analysis
-    if 'is_rush_hour' in traffic_df.columns:
-        st.subheader("Rush Hour vs Non-Rush Hour Comparison")
-        
-        col1, col2, col3 = st.columns(3)
-        
-        rush_hour_data = traffic_df[traffic_df['is_rush_hour'] == 1]
-        non_rush_data = traffic_df[traffic_df['is_rush_hour'] == 0]
-        
-        with col1:
-            st.metric(
-                "Rush Hour Avg Speed",
-                f"{rush_hour_data['speed'].mean():.1f} km/h",
-                delta=f"{rush_hour_data['speed'].mean() - traffic_df['speed'].mean():.1f} km/h"
-            )
-        
-        with col2:
-            st.metric(
-                "Non-Rush Hour Avg Speed",
-                f"{non_rush_data['speed'].mean():.1f} km/h",
-                delta=f"{non_rush_data['speed'].mean() - traffic_df['speed'].mean():.1f} km/h"
-            )
-        
-        with col3:
-            st.metric(
-                "Speed Difference",
-                f"{abs(rush_hour_data['speed'].mean() - non_rush_data['speed'].mean()):.1f} km/h"
-            )
+            st.plotly_chart(fig, width="stretch")
+
 
 # ============================================================================
 # TAB 3: MODEL INSIGHTS
@@ -413,7 +385,7 @@ with tab3:
             color=correlations.values,
             color_continuous_scale='RdYlGn'
         )
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
     
     st.markdown("---")
     
