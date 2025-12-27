@@ -12,6 +12,8 @@ from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 import requests
 
+st.set_page_config(page_title="Bangkok Bus Insights", layout="wide")
+
 # Hugging Face dataset URLs
 DATA_REPO = "Ayemm/BKK_Bus_Data"
 
@@ -20,24 +22,6 @@ ROUTES_URL = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/cl
 TRAFFIC_URL = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/traffic.csv"
 CONGESTION_URL = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/congestion_zones.csv"
 STOPS_URL = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/cleaned_bus_stops_file.csv"
-
-# Model filenames hosted in the same repo
-#ROUTE_MODELS_FILE = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/blob/main/route_models.pkl"
-#FEATURE_COLUMNS_FILE = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/blob/main/feature_columns.pkl"
-
-# -------------------- PAGE LOOK --------------------
-st.set_page_config(page_title="Bangkok Bus Insights", layout="wide")
-st.markdown("""
-<style>
-h1,h2,h3 {font-weight:800; letter-spacing:.2px}
-.card{background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
-      border-radius:16px; padding:16px 18px; box-shadow:0 8px 24px rgba(0,0,0,.18)}
-.big{font-size:40px; font-weight:800}
-.dim{color:#9aa4b2}
-hr{border:none; height:1px; background:rgba(255,255,255,.1); margin:12px 0}
-.spacer{height:14px}
-</style>
-""", unsafe_allow_html=True)
 
 # -------------------- HELPERS --------------------
 # ---------- Feature engineering helpers (add above build_segment_times_from_model) ----------
@@ -257,13 +241,15 @@ def estimate_time_between_indices(ref, oi, di, routes_df, route_models, feature_
 #def load_csv(url):
 #    """Load CSV directly from Hugging Face URL"""
 #   return pd.read_csv(url)
+HF_TOKEN = st.secrets.get("HF_TOKEN", None)
 
 @st.cache_data(show_spinner=False)
 def load_csv(repo_id, filename):
     local_path = hf_hub_download(
         repo_id=repo_id,
         filename=filename,
-        repo_type="dataset"
+        repo_type="dataset",
+        token=HF_TOKEN 
     )
     return pd.read_csv(local_path)
 
@@ -285,19 +271,20 @@ def load_csv_url(url: str) -> pd.DataFrame:
     """Load CSV directly from a URL"""
     return pd.read_csv(url)
 
-
 @st.cache_resource(show_spinner=False)
 def load_models_from_hf():
     try:
         route_models_path = hf_hub_download(
             "Ayemm/BKK_Bus_Data",
             "route_models.pkl",
-            repo_type="dataset"
+            repo_type="dataset",
+            token=st.secrets.get("HF_TOKEN", None)
         )
         feature_columns_path = hf_hub_download(
             "Ayemm/BKK_Bus_Data",
             "feature_columns.pkl",
-            repo_type="dataset"
+            repo_type="dataset",
+            token=st.secrets.get("HF_TOKEN", None)
         )
 
         with open(route_models_path, "rb") as f:
@@ -309,9 +296,9 @@ def load_models_from_hf():
         return route_models, feature_columns
 
     except Exception as e:
-        st.error(f"Failed to load model files from HF: {e}")
-        return None, None
-
+        st.error(f"Could not load models: {e}")
+        st.info("Continuing without prediction features...")
+        return {}, {}  # Return empty instead of None
 
 # ==============================
 # LOAD DATA
