@@ -10,14 +10,6 @@ from streamlit_folium import st_folium
 from huggingface_hub import hf_hub_download
 import os
 
-import os
-st.sidebar.write("Current directory:", os.getcwd())
-st.sidebar.write("Files:", os.listdir())
-if os.path.exists("pages"):
-    st.sidebar.write("Pages folder contents:", os.listdir("pages"))
-else:
-    st.sidebar.error("❌ Pages folder not found!")
-
 # Page configuration
 st.set_page_config(
     page_title="Traffic Analysis",
@@ -58,11 +50,11 @@ def load_csv_from_hf(
                 st.error(f"Missing columns {missing} in {filename}")
                 return None
 
-        st.success(f"✅ Loaded {len(df):,} rows from HF: {filename}")
+        st.success(f"Loaded {len(df):,} rows from HF: {filename}")
         return df
 
     except Exception as e:
-        st.error(f"❌ HF load failed ({filename}): {e}")
+        st.error(f"HF load failed ({filename}): {e}")
         return None
 
 
@@ -74,10 +66,10 @@ def load_local_csv(path, parse_dates=None):
     if os.path.exists(path):
         try:
             df = pd.read_csv(path, parse_dates=parse_dates)
-            st.success(f"✅ Loaded {len(df):,} rows from {path}")
+            st.success(f"Loaded {len(df):,} rows from {path}")
             return df
         except Exception as e:
-            st.error(f"❌ Error loading {path}: {e}")
+            st.error(f"Error loading {path}: {e}")
     return None
 
 
@@ -130,7 +122,7 @@ with st.spinner("Loading data..."):
     traffic_df, congestion_df, bus_routes_df, bus_stops_df, route_summary_df = load_data()
 
 if traffic_df is None or congestion_df is None:
-    st.error("❌ Required datasets could not be loaded.")
+    st.error("Required datasets could not be loaded.")
     st.stop()
 
 # Main content

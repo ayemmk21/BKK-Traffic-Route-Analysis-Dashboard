@@ -14,12 +14,17 @@ from folium.plugins import HeatMap
 from streamlit_folium import st_folium
 import requests
 
-
-# Direct CSV URLs from Hugging Face (raw dataset links)
-#ROUTES_URL = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/cleaned_bus_routes_file.csv"
-#TRAFFIC_URL = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/traffic.csv"
-#CONGESTION_URL = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/congestion_zones.csv"
-#STOPS_URL = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/cleaned_bus_stops_file.csv"
+st.markdown("""
+<style>
+h1,h2,h3 {font-weight:800; letter-spacing:.2px}
+.card{background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+      border-radius:16px; padding:16px 18px; box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.big{font-size:40px; font-weight:800}
+.dim{color:#9aa4b2}
+hr{border:none; height:1px; background:rgba(255,255,255,.1); margin:12px 0}
+.spacer{height:14px}
+</style>
+""", unsafe_allow_html=True)
 
 # -------------------- HELPERS --------------------
 # ---------- Feature engineering helpers (add above build_segment_times_from_model) ----------
