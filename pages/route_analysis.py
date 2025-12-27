@@ -289,7 +289,7 @@ def load_models_from_hf():
         return route_models, feature_columns
 
     except Exception as e:
-        return {}, {}
+        raise
 
 try:
     model_status = st.status("Loading prediction models...")  
