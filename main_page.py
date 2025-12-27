@@ -7,6 +7,7 @@ from plotly.subplots import make_subplots
 import folium
 from streamlit_folium import folium_static
 from streamlit_folium import st_folium
+from huggingface_hub import hf_hub_download
 import os
 
 # Page configuration
@@ -19,213 +20,110 @@ st.set_page_config(
 st.title("Bangkok Traffic Analysis Dashboard")
 st.sidebar.success("Select a page above.")
 
-# Hugging Face dataset URLs
-HUGGINGFACE_BASE = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/"
+# ==================================================
+# HUGGING FACE CONFIG
+# ==================================================
+HF_REPO = "Ayemm/BKK_Bus_Data"
 
-# Main data files
-TRAFFIC_DATA_URL = HUGGINGFACE_BASE + "traffic.csv"
-CONGESTION_DATA_URL = HUGGINGFACE_BASE + "congestion_zones.csv"
-
-# Additional data files
-BUS_ROUTES_URL = HUGGINGFACE_BASE + "cleaned_bus_routes_file.csv"
-BUS_STOPS_URL = HUGGINGFACE_BASE + "cleaned_bus_stops_file.csv"
-ROUTE_SUMMARY_URL = HUGGINGFACE_BASE + "predicted_route_times_summary.csv"
-
-
-# --- Remote data loader with caching ---
-
-@st.cache_data(show_spinner=False, ttl=3600)
-def load_csv_from_url(url: str, required_cols: list[str] | None = None, parse_dates: list[str] | None = None) -> pd.DataFrame | None:
-    """Load a full CSV file from Hugging Face and validate required columns."""
-    if not url:
-        return None
+# ==================================================
+# REMOTE DATA LOADER
+# ==================================================
+@st.cache_data(show_spinner=False)
+def load_csv_from_hf(
+    repo_id: str,
+    filename: str,
+    required_cols=None,
+    parse_dates=None
+) -> pd.DataFrame | None:
     try:
-        df = pd.read_csv(url, parse_dates=parse_dates)
+        local_path = hf_hub_download(
+            repo_id=repo_id,
+            filename=filename,
+            repo_type="dataset"
+        )
+
+        df = pd.read_csv(local_path, parse_dates=parse_dates)
+
         if required_cols:
             missing = [c for c in required_cols if c not in df.columns]
             if missing:
-                st.error(f"Missing required columns: {missing} in {os.path.basename(url)}")
+                st.error(f"Missing columns {missing} in {filename}")
                 return None
-        st.success(f"✅ Loaded {len(df):,} rows from {os.path.basename(url)}")
+
+        st.success(f"✅ Loaded {len(df):,} rows from HF: {filename}")
         return df
+
     except Exception as e:
-        st.error(f"❌ Error loading {os.path.basename(url)}: {e}")
+        st.error(f"❌ HF load failed ({filename}): {e}")
         return None
 
 
-# --- Local fallback loaders with caching ---
-
-@st.cache_data(show_spinner=False, ttl=3600)
-def load_traffic_local() -> pd.DataFrame | None:
-    """Load traffic data from local file as fallback."""
-    p = "data/traffic.csv"
-    if os.path.exists(p):
+# ==================================================
+# LOCAL FALLBACK LOADERS
+# ==================================================
+@st.cache_data(show_spinner=False)
+def load_local_csv(path, parse_dates=None):
+    if os.path.exists(path):
         try:
-            df = pd.read_csv(p, parse_dates=["timestamp"])
-            st.success(f"✅ Loaded {len(df):,} rows from local traffic.csv")
+            df = pd.read_csv(path, parse_dates=parse_dates)
+            st.success(f"✅ Loaded {len(df):,} rows from {path}")
             return df
         except Exception as e:
-            st.error(f"❌ Error loading local traffic data: {e}")
+            st.error(f"❌ Error loading {path}: {e}")
     return None
 
 
-@st.cache_data(show_spinner=False, ttl=3600)
-def load_congestion_local() -> pd.DataFrame | None:
-    """Load congestion data from local file as fallback."""
-    p = "data/congestion.csv"
-    if os.path.exists(p):
-        try:
-            df = pd.read_csv(p)
-            st.success(f"✅ Loaded {len(df):,} rows from local congestion.csv")
-            return df
-        except Exception as e:
-            st.error(f"❌ Error loading local congestion data: {e}")
-    return None
-
-
-@st.cache_data(show_spinner=False, ttl=3600)
-def load_bus_routes_local() -> pd.DataFrame | None:
-    """Load bus routes data from local file as fallback."""
-    p = "data/bangkok_bus_routes.csv"
-    if os.path.exists(p):
-        try:
-            df = pd.read_csv(p)
-            st.success(f"✅ Loaded {len(df):,} rows from local bangkok_bus_routes.csv")
-            return df
-        except Exception as e:
-            st.error(f"❌ Error loading local bus routes data: {e}")
-    return None
-
-
-@st.cache_data(show_spinner=False, ttl=3600)
-def load_bus_stops_local() -> pd.DataFrame | None:
-    """Load bus stops data from local file as fallback."""
-    p = "data/cleaned_bus_stops_file.csv"
-    if os.path.exists(p):
-        try:
-            df = pd.read_csv(p)
-            st.success(f"✅ Loaded {len(df):,} rows from local cleaned_bus_stops_file.csv")
-            return df
-        except Exception as e:
-            st.error(f"❌ Error loading local bus stops data: {e}")
-    return None
-
-
-@st.cache_data(show_spinner=False, ttl=3600)
-def load_route_summary_local() -> pd.DataFrame | None:
-    """Load route summary data from local file as fallback."""
-    p = "data/predicted_route_times_summary.csv"
-    if os.path.exists(p):
-        try:
-            df = pd.read_csv(p)
-            st.success(f"✅ Loaded {len(df):,} rows from local predicted_route_times_summary.csv")
-            return df
-        except Exception as e:
-            st.error(f"❌ Error loading local route summary data: {e}")
-    return None
-
-
-# --- Main data loader function ---
-
+# ==================================================
+# MAIN DATA LOADER (FIXED)
+# ==================================================
 def load_data():
-    """
-    Load all required data from Hugging Face, with local file fallback.
-    
-    Returns:
-        tuple: (traffic_df, congestion_df, bus_routes_df, bus_stops_df, route_summary_df)
-    """
-    # Load traffic data (required)
-    traffic_df = load_csv_from_url(
-        TRAFFIC_DATA_URL,
+
+    traffic_df = load_csv_from_hf(
+        HF_REPO,
+        "traffic.csv",
         required_cols=["lat", "lon", "speed", "timestamp"],
         parse_dates=["timestamp"]
     )
     if traffic_df is None:
-        st.warning("⚠️ Failed to load from Hugging Face, trying local fallback...")
-        traffic_df = load_traffic_local()
-    
-    # Load congestion data (required)
-    congestion_df = load_csv_from_url(
-        CONGESTION_DATA_URL,
+        traffic_df = load_local_csv("data/traffic.csv", parse_dates=["timestamp"])
+
+    congestion_df = load_csv_from_hf(
+        HF_REPO,
+        "congestion_zones.csv",
         required_cols=["center_lat", "center_lon", "severity", "avg_speed"]
     )
     if congestion_df is None:
-        st.warning("⚠️ Failed to load from Hugging Face, trying local fallback...")
-        congestion_df = load_congestion_local()
-    
-    # Load bus routes data (optional)
-    bus_routes_df = load_csv_from_url(BUS_ROUTES_URL)
+        congestion_df = load_local_csv("data/congestion.csv")
+
+    bus_routes_df = load_csv_from_hf(HF_REPO, "cleaned_bus_routes_file.csv")
     if bus_routes_df is None:
-        bus_routes_df = load_bus_routes_local()
-    
-    # Load bus stops data (optional)
-    bus_stops_df = load_csv_from_url(BUS_STOPS_URL)
+        bus_routes_df = load_local_csv("data/bangkok_bus_routes.csv")
+
+    bus_stops_df = load_csv_from_hf(HF_REPO, "cleaned_bus_stops_file.csv")
     if bus_stops_df is None:
-        bus_stops_df = load_bus_stops_local()
-    
-    # Load route summary data (optional)
-    route_summary_df = load_csv_from_url(ROUTE_SUMMARY_URL)
+        bus_stops_df = load_local_csv("data/cleaned_bus_stops_file.csv")
+
+    route_summary_df = load_csv_from_hf(HF_REPO, "predicted_route_times_summary.csv")
     if route_summary_df is None:
-        route_summary_df = load_route_summary_local()
-    
-    return traffic_df, congestion_df, bus_routes_df, bus_stops_df, route_summary_df
+        route_summary_df = load_local_csv("data/predicted_route_times_summary.csv")
 
+    return (
+        traffic_df,
+        congestion_df,
+        bus_routes_df,
+        bus_stops_df,
+        route_summary_df,
+    )
 
-# Custom CSS
-st.markdown("""
-    <style>
-    .main-header {
-        font-size: 3rem;
-        font-weight: bold;
-        color: #1f77b4;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    .metric-container {
-        background-color: #f0f2f6;
-        padding: 1rem;
-        border-radius: 0.5rem;
-        text-align: center;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-
-# Auto-load data
+# ==================================================
+# LOAD DATA
+# ==================================================
 with st.spinner("Loading data..."):
     traffic_df, congestion_df, bus_routes_df, bus_stops_df, route_summary_df = load_data()
 
-
-# Check if data is loaded
 if traffic_df is None or congestion_df is None:
-    st.warning("No data could be loaded from Hugging Face or local files.")
-    st.info("""
-    **Configured Data Sources:**
-    - **Traffic Data:** `traffic.csv` from Hugging Face
-    - **Congestion Zones:** `congestion_zones.csv` from Hugging Face
-    
-    **Available files in your dataset:**
-    - cleaned_bus_routes_file.csv 
-    - cleaned_bus_stops_file.csv
-    - congestion_zones.csv 
-    - traffic.csv
-    - predicted_route_times_summary.csv
-    
-    **Fallback Option:**
-    - Create a `data/` folder in your project directory
-    - Add `traffic.csv` and `congestion_zones.csv` files locally
-    
-    """)
-    
-    st.subheader("Data Source Status")
-    col1, col2 = st.columns(2)
-    with col1:
-        st.info(f"Traffic URL:\n{TRAFFIC_DATA_URL}")
-    with col2:
-        st.info(f"Congestion URL:\n{CONGESTION_DATA_URL}")
-    
+    st.error("❌ Required datasets could not be loaded.")
     st.stop()
-
 
 # Main content
 tab1, tab2, tab3 = st.tabs([

@@ -1,5 +1,3 @@
-# ui.py — PKL-powered, tabbed dashboard (smart PKL→CSV mapping, robust MAE/R²)
-
 import os, ast, pickle, colorsys, hashlib
 from pathlib import Path
 from datetime import datetime
@@ -255,51 +253,82 @@ def estimate_time_between_indices(ref, oi, di, routes_df, route_models, feature_
     return float(part["segment_travel_time_min"].sum())
 
 # -------------------- LOAD BASE DATA ---------------
-@st.cache_data
-def load_csv(url):
-    """Load CSV directly from Hugging Face URL"""
+#@st.cache_data
+#def load_csv(url):
+#    """Load CSV directly from Hugging Face URL"""
+#   return pd.read_csv(url)
+
+@st.cache_data(show_spinner=False)
+def load_csv(repo_id, filename):
+    local_path = hf_hub_download(
+        repo_id=repo_id,
+        filename=filename,
+        repo_type="dataset"
+    )
+    return pd.read_csv(local_path)
+
+traffic_df = load_csv("Ayemm/BKK_Bus_Data", "traffic.csv")
+
+@st.cache_data(show_spinner=False)
+def load_csv_hf(repo_id: str, filename: str) -> pd.DataFrame:
+    """Load CSV from Hugging Face dataset repo"""
+    path = hf_hub_download(
+        repo_id=repo_id,
+        filename=filename,
+        repo_type="dataset"
+    )
+    return pd.read_csv(path)
+
+
+@st.cache_data(show_spinner=False)
+def load_csv_url(url: str) -> pd.DataFrame:
+    """Load CSV directly from a URL"""
     return pd.read_csv(url)
 
-@st.cache_resource
+
+@st.cache_resource(show_spinner=False)
 def load_models_from_hf():
-    """Download model files from Hugging Face and load them"""
     try:
-        # Download from raw URLs
-        route_models_url = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/route_models.pkl"
-        feature_columns_url = "https://huggingface.co/datasets/Ayemm/BKK_Bus_Data/resolve/main/feature_columns.pkl"
-        
-        # Load route_models
-        response1 = requests.get(route_models_url)
-        response1.raise_for_status()
-        route_models = pickle.loads(response1.content)
-        
-        # Load feature_columns
-        response2 = requests.get(feature_columns_url)
-        response2.raise_for_status()
-        feature_columns = pickle.loads(response2.content)
-        
+        route_models_path = hf_hub_download(
+            "Ayemm/BKK_Bus_Data",
+            "route_models.pkl",
+            repo_type="dataset"
+        )
+        feature_columns_path = hf_hub_download(
+            "Ayemm/BKK_Bus_Data",
+            "feature_columns.pkl",
+            repo_type="dataset"
+        )
+
+        with open(route_models_path, "rb") as f:
+            route_models = pickle.load(f)
+
+        with open(feature_columns_path, "rb") as f:
+            feature_columns = pickle.load(f)
+
         return route_models, feature_columns
+
     except Exception as e:
-        st.error(f"Failed to load model files from Hugging Face: {e}")
+        st.error(f"Failed to load model files from HF: {e}")
         return None, None
+
 
 # ==============================
 # LOAD DATA
 # ==============================
 st.info("Loading data from Hugging Face...")
-
 with st.spinner("Loading data from Hugging Face..."):
-    routes_df = load_csv(ROUTES_URL)
-    traffic_df = load_csv(TRAFFIC_URL)
-    congestion_df = load_csv(CONGESTION_URL)
+    routes_df = load_csv_hf(DATA_REPO, "cleaned_bus_routes_file.csv")
+    traffic_df = load_csv_hf(DATA_REPO, "traffic.csv")
+    congestion_df = load_csv_hf(DATA_REPO, "congestion_zones.csv")
     route_models, feature_columns = load_models_from_hf()
 
 st.success("Data successfully loaded from Hugging Face 🚀")
 
-traffic = load_csv(TRAFFIC_URL)
-routes  = load_csv(ROUTES_URL)
-zones   = load_csv(CONGESTION_URL)
-stops = load_csv(STOPS_URL)
+traffic = load_csv_hf(DATA_REPO, "traffic.csv")
+routes  = load_csv_hf(DATA_REPO, "cleaned_bus_routes_file.csv")
+zones   = load_csv_hf(DATA_REPO, "congestion_zones.csv")
+stops   = load_csv_hf(DATA_REPO, "cleaned_bus_stops_file.csv")
 
 
 # normalize route geometry
