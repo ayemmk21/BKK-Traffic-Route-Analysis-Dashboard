@@ -629,7 +629,7 @@ with tab_dist:
         fig.add_vline(x=30, line_dash="dash")
         fig.add_annotation(x=30, y=0.95, yref="paper", text="30 km/h", showarrow=False)
         fig.update_layout(margin=dict(l=10,r=10,t=10,b=10))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 # TEMPORAL
 with tab_temporal:
@@ -646,14 +646,14 @@ with tab_temporal:
             figH.update_layout(yaxis=dict(title="Volume"),
                                yaxis2=dict(title="Speed (km/h)", overlaying="y", side="right"),
                                xaxis=dict(dtick=2), margin=dict(l=10,r=10,t=10,b=10))
-            st.plotly_chart(figH, use_container_width=True)
+            st.plotly_chart(figH, width='stretch')
         with cR:
             if "day_of_week" in display_df.columns:
                 by_d = display_df.groupby("day_of_week")[speed_col].mean().reindex(range(7)).fillna(0).reset_index()
                 by_d["day"] = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"]
                 figD = px.bar(by_d, x="day", y=speed_col, color=speed_col, color_continuous_scale="RdYlGn")
                 figD.update_layout(margin=dict(l=10,r=10,t=10,b=10))
-                st.plotly_chart(figD, use_container_width=True)
+                st.plotly_chart(figD, width='stretch')
 
 # ZONES
 with tab_zones:
@@ -665,16 +665,16 @@ with tab_zones:
         c1, c2 = st.columns([2,3])
         with c1:
             st.dataframe(zones.sort_values("size", ascending=False)[["zone_id","severity","avg_speed","size"]].head(20),
-                         use_container_width=True, height=520)
+                         width='stretch', height=520)
         with c2:
             pie = zones["severity"].value_counts().rename_axis("severity").reset_index(name="count")
             figZ1 = px.pie(pie, names="severity", values="count", hole=0.35)
             figZ1.update_layout(margin=dict(l=10,r=10,t=10,b=10))
-            st.plotly_chart(figZ1, use_container_width=True)
+            st.plotly_chart(figZ1, width='stretch')
             largest = zones.nlargest(12, "size")
             figZ2 = px.bar(largest, x="zone_id", y="size", color="severity")
             figZ2.update_layout(margin=dict(l=10,r=10,t=10,b=10))
-            st.plotly_chart(figZ2, use_container_width=True)
+            st.plotly_chart(figZ2, width='stretch')
 
 # SEGMENT TIMES (from PKL)
 with tab_segments:
@@ -696,14 +696,14 @@ with tab_segments:
         keep = ["ref","segment_index","start_lat","start_lon","end_lat","end_lon",
                 "distance_km","predicted_speed_kmh","segment_travel_time_min"]
         keep = [c for c in keep if c in seg_df.columns]
-        st.dataframe(seg_df[keep], use_container_width=True, height=360)
+        st.dataframe(seg_df[keep], width='stretch', height=360)
 
         cum = seg_df[["segment_index","segment_travel_time_min"]].copy()
         cum["cumulative_min"] = cum["segment_travel_time_min"].cumsum()
         figC = px.line(cum, x="segment_index", y="cumulative_min", markers=True,
                        labels={"segment_index":"Segment #","cumulative_min":"Cumulative Time (min)"})
         figC.update_layout(margin=dict(l=10,r=10,t=10,b=10))
-        st.plotly_chart(figC, use_container_width=True)
+        st.plotly_chart(figC, width='stretch')
 
 # 🚌 ROUTE FINDER TAB
 with tab_finder:
@@ -764,7 +764,7 @@ with tab_finder:
                            .drop(columns="__sort_time__")
 
             st.markdown("**Matching bus routes:**")
-            st.dataframe(res_df, use_container_width=True, height=360)
+            st.dataframe(res_df, width='stretch', height=360)
 
             fmap = folium.Map(location=[(o_lat+d_lat)/2, (o_lon+d_lon)/2], zoom_start=12, tiles="CartoDB positron")
             folium.Marker([o_lat, o_lon], tooltip=f"Origin: {o_name}", icon=folium.Icon(color="green")).add_to(fmap)
