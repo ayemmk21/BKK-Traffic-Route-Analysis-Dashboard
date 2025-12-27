@@ -10,6 +10,14 @@ from streamlit_folium import st_folium
 from huggingface_hub import hf_hub_download
 import os
 
+import os
+st.sidebar.write("Current directory:", os.getcwd())
+st.sidebar.write("Files:", os.listdir())
+if os.path.exists("pages"):
+    st.sidebar.write("Pages folder contents:", os.listdir("pages"))
+else:
+    st.sidebar.error("❌ Pages folder not found!")
+
 # Page configuration
 st.set_page_config(
     page_title="Traffic Analysis",
