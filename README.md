@@ -10,4 +10,32 @@ The app automatically loads datasets (via Hugging Face Hub) and provides multi-t
 - Correlation Insights
 - Segment-by-Segment Analysis
 - Robust UI/UX Design
+Quick Start
 
+Create a virtual environment and install requirements:
+
+python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
+pip install --upgrade pip
+pip install -r requirements.txt
+
+
+Run the dashboard:
+
+streamlit run app.py
+
+
+Open in browser:
+
+http://127.0.0.1:8501
+
+Dataset Structure
+
+If running locally with manual dataset:
+
+data/
+  routes.csv
+  segments.csv
+  gps_data.csv
+
+
+Or configure Hugging Face dataset loader inside the app (default).
